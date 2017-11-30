@@ -3,114 +3,144 @@ love.graphics.setDefaultFilter('nearest', 'nearest')
 enemy = {}
 enemies_controller = {}
 enemies_controller.enemies = {}
-enemies_controller.image = love.graphics.newImage('enemy.png')
+
+love.graphics.setDefaultFilter("nearest" ,"nearest" ,1)
 
 function love.load()
+    background_img = love.graphics.newImage('assets/images/background.jpg')
 
-    config = {}
-    config.player = {}
-    config.bullet = {}
-    config.enemy = {}
-    config.info = {}
+    -- game flags
+    game_over = false
+    we_have_a_winner = false
 
-    config.info.x_size = 800
-    config.info.y_size = 20
-    config.info.x_start_at = 0
-    config.info.y_start_at = 580
+    -- status bar
+    info = {}
+    info.x_size = love.graphics.getWidth()
+    info.y_size = 20
+    info.x_start_at = 0
+    info.y_start_at = love.graphics.getHeight() - info.y_size
 
-    config.player.x_size = 80
-    config.player.y_size = 20
-    config.player.speed = 10
-    config.player.x_start_at = 0
-    config.player.y_start_at = 560
-    config.player.fire_cooldown = 20
-    config.player.speed = 10
-
+    -- player
     player = {}
-    player.x = config.player.x_start_at
-    player.y = config.player.y_start_at
-    player.fire_cooldown = config.player.fire_cooldown
+    player.x = 0
+    player.y = love.graphics.getHeight() - 150
+    player.speed = 500
+    player.fire_cooldown_reset_value = 20
+    player.fire_cooldown = player.fire_cooldown_reset_value
+    player.bullet_speed = 700
     player.bullets = {}
+
+    -- images
+    images = {}
+    images.enemy = love.graphics.newImage('assets/images/rocket.png')
+    images.enemy_w, images.enemy_h = images.enemy:getDimensions()
+    images.player = love.graphics.newImage('assets/images/rocket.png')
+    images.player_w, images.player_h = images.player:getDimensions()
+
+    -- sounds
+    sounds = {}
+    sounds.fire = love.audio.newSource("assets/sounds/laser_shoot.wav", "static")
+    sounds.fire:setVolume(0.2)
+    sounds.explosion = love.audio.newSource("assets/sounds/explosion.wav", "static")
+    sounds.explosion:setVolume(0.2)
 
     player.fire = function()
         if (player.fire_cooldown <= 0) then
-            player.fire_cooldown = config.player.fire_cooldown
+            love.audio.play(sounds.fire)
+            player.fire_cooldown = player.fire_cooldown_reset_value
             bullet = {}
-            bullet.x = player.x + 35 -- middle
+            bullet.x = player.x + images.player_w/2 -- middle
             bullet.y = player.y
             table.insert(player.bullets, bullet)
         end
     end
 
-    config.bullet.x_size = 10
-    config.bullet.y_size = 10
-    config.bullet.speed = 10
-
-    config.enemy.x_size = 80
-    config.enemy.y_size = 20
-    config.enemy.speed = 20
-    config.enemy.fire_cooldown = 20
-
-   enemies_controller:spawnEnemy(0, 0)
-   enemies_controller:spawnEnemy(config.enemy.x_size + 20, 0)
-
+    -- enemies
+   for i = 0,7 do
+    enemies_controller:spawnEnemy(i * images.enemy_w, 0)
+   end
 
 end
 
 function love.update(dt)
 
+    if game_over then
+        return
+    end
+
+    if #enemies_controller.enemies == 0 then
+        we_have_a_winner = true
+    end
+
     player.fire_cooldown = player.fire_cooldown - 1
 
     -- keyboard
     if love.keyboard.isDown("right") then
-        player.x = player.x + config.player.speed
+        if player.x < love.graphics.getWidth() - images.player_w then
+            player.x = player.x + ( player.speed * dt )
+        end
     end
 
     if love.keyboard.isDown("left") then
-        player.x = player.x - config.player.speed
+        if player.x > 0 then
+            player.x = player.x - ( player.speed * dt )
+        end
     end
 
     if love.keyboard.isDown("space") then
         player.fire()
     end
 
+    checkCollisions(enemies_controller.enemies, player.bullets)
+
     -- player bullets
     for idx,bullet in pairs(player.bullets) do
         if idx < -100 then
             table.remove(player.bullets, idx)
         end
-        bullet.y = bullet.y - config.bullet.speed
+        bullet.y = bullet.y - ( player.bullet_speed * dt )
     end
 
     -- enemy move
     for _, e in pairs(enemies_controller.enemies) do
-        e.y = e.y + 1
+        e.y = e.y + ( 100 * dt )
+        if e.y >= love.graphics.getHeight() then
+            game_over = true
+        end
     end
 end
 
 function love.draw()
 
+    love.graphics.draw(background_img)
+
+    if game_over then
+        love.graphics.print("Game Over!")
+        return
+    elseif we_have_a_winner then
+        love.graphics.print("You won!")
+    end
+
     -- ground bar
     love.graphics.setColor(0, 255, 200)
-    love.graphics.rectangle("fill", config.info.x_start_at, config.info.y_start_at, config.info.x_size, config.info.y_size)
+    love.graphics.rectangle("fill", info.x_start_at, info.y_start_at, info.x_size, info.y_size)
 
     -- info text
     love.graphics.setColor(0, 255, 0, 255)
     love.graphics.print("Reloading: ", 0, 10)
 
     -- player
-    love.graphics.setColor(0, 0, 255)
-    love.graphics.rectangle("fill", player.x, player.y, config.player.x_size, config.player.y_size)
+    love.graphics.draw(images.player, player.x, player.y)
 
     -- bullets
     love.graphics.setColor(255, 255, 255)
     for _,bullet in pairs(player.bullets) do
-        love.graphics.rectangle("fill", bullet.x, bullet.y, config.bullet.x_size, config.bullet.y_size)
+        love.graphics.rectangle("fill", bullet.x, bullet.y, 10, 10)
     end
 
     -- enemies
-    for _e, enemy in pairs(enemies_controller.enemies) do
-        love.graphics.draw(enemies_controller.image, enemy.x, enemy.y)
+    for _,enemy in pairs(enemies_controller.enemies) do
+        love.graphics.draw(images.enemy, enemy.x, enemy.y)
     end
 end
 
@@ -119,13 +149,25 @@ function enemies_controller:spawnEnemy(x, y)
     enemy.x = x
     enemy.y = y
     enemy.bullets = {}
-    enemy.fire_cooldown = config.enemy.fire_cooldown
+    enemy.fire_cooldown = enemy.fire_cooldown
     table.insert(self.enemies, enemy)
+end
+
+function checkCollisions(enemies, bullets)
+    for eidx,e in pairs(enemies) do
+        for bidx,b in pairs(bullets) do
+            if b.y <= e.y + images.enemy_h and b.x > e.x and b.x < e.x + images.enemy_w then
+                love.audio.play(sounds.explosion)
+                table.remove(enemies, eidx)
+                table.remove(bullets, bidx)
+            end
+        end
+    end
 end
 
 function enemy:fire()
     if (self.fire_cooldown <= 0) then
-        self.fire_cooldown = config.enemy.fire_cooldown
+        self.fire_cooldown = enemy.fire_cooldown
         bullet = {}
         bullet.x = self.x + 35 -- middle
         bullet.y = self.y
