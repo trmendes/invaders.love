@@ -12,6 +12,7 @@ function love.load()
     -- game flags
     game_over = false
     we_have_a_winner = false
+    game_row_counter = 3
 
     -- status bar
     info = {}
@@ -56,10 +57,11 @@ function love.load()
     end
 
     -- enemies
-   for i = 0,7 do
-    enemies_controller:spawnEnemy(i * images.enemy_w, 0)
-   end
-
+    for j = 1, game_row_counter do
+        for i = 0,7 do
+            enemies_controller:spawnEnemy(i * images.enemy_w, -j * images.enemy_h + 20)
+        end
+    end
 end
 
 function love.update(dt)
