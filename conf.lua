@@ -2,7 +2,7 @@ function love.conf(t)
     t.identity      = "GtGLG"
     t.version       = "0.10.2"
 
-    t.window.title  = "Uhu! First one!"
+    t.window.title  = "Uhu! First one! \o/"
     t.window.width  = 1024
     t.window.height = 768
 
